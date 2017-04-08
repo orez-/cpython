@@ -430,6 +430,7 @@ struct _arg {
 struct _keyword {
     identifier arg;
     expr_ty value;
+    expr_ty condition;
 };
 
 struct _alias {
@@ -629,8 +630,9 @@ arguments_ty _Py_arguments(asdl_seq * args, arg_ty vararg, asdl_seq *
 #define arg(a0, a1, a2, a3, a4) _Py_arg(a0, a1, a2, a3, a4)
 arg_ty _Py_arg(identifier arg, expr_ty annotation, int lineno, int col_offset,
                PyArena *arena);
-#define keyword(a0, a1, a2) _Py_keyword(a0, a1, a2)
-keyword_ty _Py_keyword(identifier arg, expr_ty value, PyArena *arena);
+#define keyword(a0, a1, a2, a3) _Py_keyword(a0, a1, a2, a3)
+keyword_ty _Py_keyword(identifier arg, expr_ty value, expr_ty condition,
+                       PyArena *arena);
 #define alias(a0, a1, a2) _Py_alias(a0, a1, a2)
 alias_ty _Py_alias(identifier name, identifier asname, PyArena *arena);
 #define withitem(a0, a1, a2) _Py_withitem(a0, a1, a2)
