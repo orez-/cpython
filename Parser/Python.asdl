@@ -125,7 +125,7 @@ module Python
            attributes (int lineno, int col_offset)
 
     -- keyword arguments supplied to call (NULL identifier for **kwargs)
-    keyword = (identifier? arg, expr value)
+    keyword = (identifier? arg, expr value, expr? condition)
 
     -- import name with optional 'as' alias.
     alias = (identifier name, identifier? asname)

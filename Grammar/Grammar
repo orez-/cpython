@@ -124,6 +124,10 @@ classdef: 'class' NAME ['(' [arglist] ')'] ':' suite
 
 arglist: argument (',' argument)*  [',']
 
+# I'd prefer `if`, but it looks like that parses funky.
+# Revisit this once everything else is working.
+argument_if: test ['when' test]
+
 # The reason that keywords are test nodes instead of NAME is that using NAME
 # results in an ambiguity. ast.c makes sure it's a NAME.
 # "test '=' test" is really "keyword '=' test", but we have no such token.
@@ -134,7 +138,7 @@ arglist: argument (',' argument)*  [',']
 # multiple (test comp_for) arguments are blocked; keyword unpackings
 # that precede iterable unpackings are blocked; etc.
 argument: ( test [comp_for] |
-            test '=' test |
+            test '=' argument_if |
             '**' test |
             '*' test )
 

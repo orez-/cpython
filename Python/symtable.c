@@ -1688,6 +1688,8 @@ symtable_visit_comprehension(struct symtable *st, comprehension_ty lc)
 static int
 symtable_visit_keyword(struct symtable *st, keyword_ty k)
 {
+    if (k->condition)
+        VISIT(st, expr, k->condition);
     VISIT(st, expr, k->value);
     return 1;
 }
