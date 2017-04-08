@@ -488,9 +488,11 @@ static char *arg_fields[]={
 };
 static PyTypeObject *keyword_type;
 static PyObject* ast2obj_keyword(void*);
+_Py_IDENTIFIER(condition);
 static char *keyword_fields[]={
     "arg",
     "value",
+    "condition",
 };
 static PyTypeObject *alias_type;
 static PyObject* ast2obj_alias(void*);
@@ -1175,7 +1177,7 @@ static int init_types(void)
     arg_type = make_type("arg", &AST_type, arg_fields, 2);
     if (!arg_type) return 0;
     if (!add_attributes(arg_type, arg_attributes, 2)) return 0;
-    keyword_type = make_type("keyword", &AST_type, keyword_fields, 2);
+    keyword_type = make_type("keyword", &AST_type, keyword_fields, 3);
     if (!keyword_type) return 0;
     if (!add_attributes(keyword_type, NULL, 0)) return 0;
     alias_type = make_type("alias", &AST_type, alias_fields, 2);
@@ -2539,7 +2541,7 @@ arg(identifier arg, expr_ty annotation, int lineno, int col_offset, PyArena
 }
 
 keyword_ty
-keyword(identifier arg, expr_ty value, PyArena *arena)
+keyword(identifier arg, expr_ty value, expr_ty condition, PyArena *arena)
 {
     keyword_ty p;
     if (!value) {
@@ -2552,6 +2554,7 @@ keyword(identifier arg, expr_ty value, PyArena *arena)
         return NULL;
     p->arg = arg;
     p->value = value;
+    p->condition = condition;
     return p;
 }
 
@@ -3918,6 +3921,11 @@ ast2obj_keyword(void* _o)
     value = ast2obj_expr(o->value);
     if (!value) goto failed;
     if (_PyObject_SetAttrId(result, &PyId_value, value) == -1)
+        goto failed;
+    Py_DECREF(value);
+    value = ast2obj_expr(o->condition);
+    if (!value) goto failed;
+    if (_PyObject_SetAttrId(result, &PyId_condition, value) == -1)
         goto failed;
     Py_DECREF(value);
     return result;
@@ -7806,6 +7814,7 @@ obj2ast_keyword(PyObject* obj, keyword_ty* out, PyArena* arena)
     PyObject* tmp = NULL;
     identifier arg;
     expr_ty value;
+    expr_ty condition;
 
     if (exists_not_none(obj, &PyId_arg)) {
         int res;
@@ -7828,7 +7837,17 @@ obj2ast_keyword(PyObject* obj, keyword_ty* out, PyArena* arena)
         PyErr_SetString(PyExc_TypeError, "required field \"value\" missing from keyword");
         return 1;
     }
-    *out = keyword(arg, value, arena);
+    if (exists_not_none(obj, &PyId_condition)) {
+        int res;
+        tmp = _PyObject_GetAttrId(obj, &PyId_condition);
+        if (tmp == NULL) goto failed;
+        res = obj2ast_expr(tmp, &condition, arena);
+        if (res != 0) goto failed;
+        Py_CLEAR(tmp);
+    } else {
+        condition = NULL;
+    }
+    *out = keyword(arg, value, condition, arena);
     return 0;
 failed:
     Py_XDECREF(tmp);

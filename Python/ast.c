@@ -2709,7 +2709,7 @@ ast_for_call(struct compiling *c, const node *n, expr_ty func)
 {
     /*
       arglist: argument (',' argument)*  [',']
-      argument: ( test [comp_for] | '*' test | test '=' test | '**' test )
+      argument: ( test [comp_for] | '*' test | test '=' argument_if | '**' test )
     */
 
     int i, nargs, nkeywords, ngens;
@@ -2804,7 +2804,7 @@ ast_for_call(struct compiling *c, const node *n, expr_ty func)
                 e = ast_for_expr(c, CHILD(ch, 1));
                 if (!e)
                     return NULL;
-                kw = keyword(NULL, e, c->c_arena);
+                kw = keyword(NULL, e, NULL, c->c_arena);
                 asdl_seq_SET(keywords, nkeywords++, kw);
                 ndoublestars++;
             }
@@ -2820,6 +2820,8 @@ ast_for_call(struct compiling *c, const node *n, expr_ty func)
                 keyword_ty kw;
                 identifier key, tmp;
                 int k;
+                node *argumentif;
+                expr_ty condition;
 
                 /* chch is test, but must be an identifier? */
                 e = ast_for_expr(c, chch);
@@ -2852,10 +2854,14 @@ ast_for_call(struct compiling *c, const node *n, expr_ty func)
                         return NULL;
                     }
                 }
-                e = ast_for_expr(c, CHILD(ch, 2));
+                argumentif = CHILD(ch, 2);
+                e = ast_for_expr(c, CHILD(argumentif, 0));
                 if (!e)
                     return NULL;
-                kw = keyword(key, e, c->c_arena);
+                condition = NULL;
+                if (NCH(argumentif) > 1)
+                    condition = ast_for_expr(c, CHILD(argumentif, 2));
+                kw = keyword(key, e, condition, c->c_arena);
                 if (!kw)
                     return NULL;
                 asdl_seq_SET(keywords, nkeywords++, kw);

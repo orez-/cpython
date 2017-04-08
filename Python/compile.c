@@ -3459,8 +3459,39 @@ compiler_subkwargs(struct compiler *c, asdl_seq *keywords, Py_ssize_t begin, Py_
     Py_ssize_t i, n = end - begin;
     keyword_ty kw;
     PyObject *keys, *key;
+    int anycondition = 0;
     assert(n > 0);
-    if (n > 1) {
+
+    for (i = begin; i < end; i++) {
+        kw = asdl_seq_GET(keywords, i);
+        if (kw->condition != NULL) {
+            anycondition = 1;
+            break;
+        }
+    }
+
+    if (anycondition) {
+        ADDOP_I(c, BUILD_MAP, 0);
+        for (i = begin; i < end; i++) {
+            basicblock *if_cleanup;
+            kw = asdl_seq_GET(keywords, i);
+            if (kw->condition != NULL) {
+                if_cleanup = compiler_new_block(c);
+                if (if_cleanup == NULL)
+                    return 0;
+                VISIT(c, expr, kw->condition);
+                ADDOP_JABS(c, POP_JUMP_IF_FALSE, if_cleanup);
+            }
+            ADDOP(c, DUP_TOP);
+            VISIT(c, expr, kw->value);
+            ADDOP(c, ROT_TWO);
+            ADDOP_O(c, LOAD_CONST, kw->arg, consts);
+            ADDOP(c, STORE_SUBSCR)
+            if (kw->condition != NULL)
+                compiler_use_next_block(c, if_cleanup);
+        }
+    }
+    else if (n > 1) {
         for (i = begin; i < end; i++) {
             kw = asdl_seq_GET(keywords, i);
             VISIT(c, expr, kw->value);
@@ -3507,7 +3538,7 @@ compiler_call_helper(struct compiler *c,
 
     for (i = 0; i < nkwelts; i++) {
         keyword_ty kw = asdl_seq_GET(keywords, i);
-        if (kw->arg == NULL) {
+        if (kw->arg == NULL || kw->condition != NULL) {
             mustdictunpack = 1;
             break;
         }
