@@ -624,6 +624,39 @@ slice_traverse(PySliceObject *v, visitproc visit, void *arg)
     return 0;
 }
 
+static Py_hash_t
+slice_hash(PySliceObject *v)
+{
+    Py_uhash_t x;  /* Unsigned for defined overflow behavior. */
+    Py_hash_t y;
+    Py_uhash_t mult = _PyHASH_MULTIPLIER;
+    x = 0x345678UL;
+
+    // What even is C?
+    y = PyObject_Hash(v->start);
+    if (y == -1)
+        return -1;
+    x = (x ^ y) * mult;
+    mult += (Py_hash_t)(82520UL + 2 + 2);
+
+    y = PyObject_Hash(v->stop);
+    if (y == -1)
+        return -1;
+    x = (x ^ y) * mult;
+    mult += (Py_hash_t)(82520UL + 1 + 1);
+
+    y = PyObject_Hash(v->step);
+    if (y == -1)
+        return -1;
+    x = (x ^ y) * mult;
+    mult += (Py_hash_t)(82520UL + 0 + 0);
+
+    x += 97531UL;
+    if (x == (Py_uhash_t)-1)
+        x = -2;
+    return x;
+}
+
 PyTypeObject PySlice_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     "slice",                    /* Name of this type */
@@ -638,7 +671,7 @@ PyTypeObject PySlice_Type = {
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */
     0,                                          /* tp_as_mapping */
-    PyObject_HashNotImplemented,                /* tp_hash */
+    (hashfunc)slice_hash,                       /* tp_hash */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
     PyObject_GenericGetAttr,                    /* tp_getattro */
